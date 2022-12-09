@@ -1,0 +1,339 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Earthsong</title>
+  <meta name="description" content="Earthsong">
+  <meta name="author" content="SitePoint">
+  <style type="text/css">
+    html, body { 
+      min-height: 100%;
+      backdrop-filter: blur(100px);
+    }
+    #centerContainer {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #play {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+      width: 7vw;
+      bottom: .5vh;
+      padding: 1vh;
+      color:#ffffff;
+      font-size: 5vh;
+      transition: 1s;
+      border-radius: 10%;
+    }
+
+    #play:hover {
+      cursor:pointer;
+      background: #ffffff;
+      color: #000000;
+    }
+
+    .moonCircle {
+      opacity: 0;
+      width: 50%;
+      transition: 3s;
+    }
+
+    .foreground {
+      stroke: #ffffff;
+    }
+
+    .playing {
+      animation: playing 3s;
+    }
+
+    #dayCircle {
+      fill: #ffffff;
+    }
+
+    @keyframes playing {
+      0% {
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="centerContainer">
+    <svg id="centerCircle" width="85vmin" height="85vmin">
+      <circle class="foreground" cx="50%" cy=50% r="48%" fill="none" opacity=.5 stroke="black" stroke-width=".2vmax"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="42%" fill="none" stroke-width=".2vmax" opacity="0"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="36%" fill="none" stroke-width=".2vmax" opacity="0"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="30%" fill="none"  stroke-width=".2vmax" opacity="0"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="24%" fill="none" stroke-width=".2vmax" opacity="0"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="18%" fill="none"  stroke-width=".2vmax" opacity="0"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="12%" fill="none"  stroke-width=".2vmax" opacity="0"></circle>
+      <circle class="moonCircle foreground" cx="50%" cy=50% r="6%" fill="none"  stroke-width=".2vmax" opacity="0"></circle>
+    </svg>
+    <div id="play" onclick="play()">
+      <i class="fa-solid fa-play" id="faPlay" ></i>
+    </div>
+  </div>
+  
+
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.17/Tone.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script type="text/javascript">
+
+  let date = new Date();
+  let dateTmw = new Date(date.getFullYear(), date.getMonth(), (date.getDate() + 1), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+  let dateYesterday = new Date(date.getFullYear(), date.getMonth(), (date.getDate() - 1), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+  let lat = 0;
+  let lon = 0;
+  let sunPos = 0;
+  let radians = 0;
+  let moonPos = 0;
+  let sOrbit = 31536000;
+  let earthPos = date - (new Date(date.getFullYear(), 0, 1, 0, 0, 0, 0))
+  let mOrbit = 2360622;
+  let sunPoints = {};
+
+  let samples = [
+        ["harp", .75, 593775],
+        ["dulcimer", .5, 570024],
+        ["harpsichord", .25, 548100],
+        ["vibraphone", .0000000001, 527800],
+        ["guitar", -.25, 508950],
+        ["piano", -.5, 491400],
+        ["Gongs", -.75, 475020],
+        ["harp_long", .75, 593775],
+        ["dulcimer_long", .5, 570024],
+        ["harpsichord_long", .25, 548100],
+        ["vibraphone_long", .0000000001, 527800],
+        ["guitar_long", -.25, 508950],
+        ["piano_long", -.5, 491400],
+        ["Gongs_long", -.75, 475020],
+      ]
+
+  let players = new Tone.Players({
+    harp: "https://earthsong.s3.us-east-2.amazonaws.com/samples/harp/harp25.mp3",
+    dulcimer: "https://earthsong.s3.us-east-2.amazonaws.com/samples/dulcimer/dulcimer25.mp3",
+    harpsichord: "https://earthsong.s3.us-east-2.amazonaws.com/samples/harpsichord/harpsichord25.mp3",
+    vibraphone: "https://earthsong.s3.us-east-2.amazonaws.com/samples/vibraphone/vibraphone25.mp3",
+    guitar: "https://earthsong.s3.us-east-2.amazonaws.com/samples/guitar/guitar25.mp3",
+    piano: "https://earthsong.s3.us-east-2.amazonaws.com/samples/piano/piano25.mp3",
+    Gongs: "https://earthsong.s3.us-east-2.amazonaws.com/samples/Gongs/Gongs25.mp3",
+    harp_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/harp_long/harp_long25.mp3",
+    dulcimer_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/dulcimer_long/dulcimer_long25.mp3",
+    harpsichord_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/harpsichord_long/harpsichord_long25.mp3",
+    vibraphone_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/vibraphone_long/vibraphone_long25.mp3",
+    guitar_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/guitar_long/guitar_long25.mp3",
+    piano_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/piano_long/piano_long25.mp3",
+    Gongs_long: "https://earthsong.s3.us-east-2.amazonaws.com/samples/Gongs_long/Gongs_long25.mp3",
+  });
+
+  function position(pos) {
+    lat = loc.latitude;
+    lon =  loc.longitude;
+    let suncalc = new SunCalc.getTimes(date, lat, lon, 0);
+    let suncalcTmw = new SunCalc.getTimes(dateTmw, lat, lon, 0);
+    let suncalcYesterday = new SunCalc.getTimes(dateYesterday, lat, lon, 0);
+
+    sunPoints.nadir = suncalc.nadir.getTime();
+    sunPoints.nadirTmw = suncalcTmw.nadir.getTime();
+    sunPoints.sunrise = suncalc.sunrise.getTime(); 
+    sunPoints.solarNoon = suncalc.solarNoon.getTime(); 
+    sunPoints.sunset = suncalc.sunset.getTime();
+    
+    let mooncalc = new SunCalc.getMoonIllumination(date);
+    moonPos = mooncalc.phase * mOrbit;
+    for (let i = 0; i < 14; i++) {
+      getSunPos(samples[i][0], samples[i][1]);
+    }
+  }
+
+  let sunCirclePts = [0, 0, 0, 0, 0, 0, 0]
+
+  let dayCircle = d3.select("#centerCircle").append("circle")
+    .attr("cx", "50%")
+    .attr("cy", "2%")
+    .attr("r", "2%")
+    .attr("id", "dayCircle")
+
+  for (let i = 0; i < 7; i++) {
+    d3.select("#centerCircle")
+      .append("circle")
+      .attr("fill", "#fff")
+      .attr("r", ".75%")
+      .attr("class", "sunCircle foreground")
+      .style("opacity", 0)
+  }
+
+  for (let i = 0; i < 7; i++) {
+    for (let j = 0; j < 7; j++) {
+      d3.select("#centerCircle")
+      .append("line")
+      .style("stroke", "#fff")
+      .style("stroke-width", 3)
+      .style("opacity", 0)
+      .attr("class", "sunGroup" + i)
+    }
+  }
+
+  let moonCircles = document.getElementsByClassName("moonCircle");
+  let sunCircles = document.getElementsByClassName("sunCircle");
+
+  function getSunPos (voice, pitchRange) {
+    let timeInMs = date.getTime();
+    if (timeInMs >= sunPoints.nadir && timeInMs <= sunPoints.sunrise) {
+      sunPos = 0 - (sunPoints.sunrise - timeInMs) / (sunPoints.sunrise - sunPoints.nadir);
+      radians = (1 + (sunPos * -.5)) * Math.PI;
+      document.body.style.backgroundImage = "linear-gradient(to bottom left, #000000 "+(-100 - (sunPos * 100))+"%, #000000 "+(-100 - (sunPos * 200))+"%, #104b63 "+(sunPos * -150)+"%, #87CEEB "+(50 + (sunPos * -150))+"%, #FF9506 "+(100 + (sunPos * -200)) +"%)"
+    } else if (timeInMs >= sunPoints.sunrise && timeInMs <= sunPoints.solarNoon) {
+      sunPos = (timeInMs - sunPoints.sunrise) / (sunPoints.solarNoon - sunPoints.sunrise);
+      radians = (((1 - sunPos) * .5) + .5) * Math.PI;
+      document.body.style.backgroundImage = "linear-gradient(to bottom left, #104b63 "+ (0 - (sunPos * 50)) +"%, #87CEEB "+ (50 - (sunPos * 50)) +"%, #87CEEB "+ (50 + (sunPos * 50)) +"%, #FF9506 "+ (100 + (sunPos * 50)) +"%)";
+    } else if (timeInMs >= sunPoints.solarNoon && timeInMs <= sunPoints.sunset) {
+      sunPos = (sunPoints.sunset - timeInMs) / (sunPoints.sunset - sunPoints.solarNoon);
+      radians = (sunPos * .5) * Math.PI;
+      document.body.style.backgroundImage = "linear-gradient(to bottom right, #104b63 "+ (0 - (sunPos * 50)) +"%, #87CEEB "+ (50 - (sunPos * 50)) +"%, #87CEEB "+ (50 + (sunPos * 50)) +"%, #FF9506 "+ (100 + (sunPos * 50)) +"%)";
+    } else {
+      sunPos = 0 - (timeInMs - sunPoints.sunset) / (sunPoints.nadirTmw - sunPoints.sunset);
+      radians = (2 + (sunPos * .5)) * Math.PI;
+      document.body.style.backgroundImage = "linear-gradient(to bottom right, #000000 "+(-100 - (sunPos * 100))+"%, #000000 "+(-100 - (sunPos * 200))+"%, #104b63 "+(sunPos * -150)+"%, #87CEEB "+(50 + (sunPos * -150))+"%, #FF9506 "+(100 + (sunPos * -200)) +"%)"
+    };
+    let sunPosCx = ((((Math.cos(radians) + 1) * .5) * 96) + 2) + "%";
+    let sunPosCy = ((((1 - (Math.sin(radians) + 1) * .5)) * 96) + 2) + "%";
+    dayCircle.attr("cx", sunPosCx)
+      .attr("cy", sunPosCy);
+    d3.selectAll(".pitchCircle")
+
+    for(let i = 0; i < 7; i++) {
+      sunCircles[i].setAttribute("cx", (Math.cos((i / 7) * (2 * Math.PI) - radians) * 48) + 50 + "%");
+      sunCircles[i].setAttribute("cy", (Math.sin((i / 7) * (2 * Math.PI) - radians) * 48) + 50 + "%");
+      sunCirclePts[i] = [
+        document.getElementsByClassName("sunCircle")[i].getAttribute("cx"),
+        document.getElementsByClassName("sunCircle")[i].getAttribute("cy")
+      ];
+    };
+
+    for (let i = 0; i < 7; i++) {
+      for (let j = 0; j < 7; j++) {
+        let getSunGroup = document.getElementsByClassName("sunGroup" + i)[j];
+        getSunGroup.setAttribute("x1", sunCirclePts[i][0])
+        getSunGroup.setAttribute("y1", sunCirclePts[i][1])
+        getSunGroup.setAttribute("x2", sunCirclePts[j][0])
+        getSunGroup.setAttribute("y2", sunCirclePts[j][1])
+      }
+    };
+
+    let timeOfDayIndex = (12 * 3.322038 * Math.log10((sunPos * pitchRange) + 1)) + 25;
+    let indexNum = (num, places) => String(num).padStart(places, 0);
+    players.player(voice).buffer = new Tone.ToneAudioBuffer("https://earthsong.s3.us-east-2.amazonaws.com/samples/" + voice + "/" + voice + indexNum(Math.ceil(timeOfDayIndex), 2) + ".mp3");
+    players.player(voice).playbackRate = Math.pow(2, (timeOfDayIndex % 1) / 12);
+  };
+
+  var requestOptions = {
+    method: 'GET',
+  };
+
+  let loc
+
+  fetch("https://api.geoapify.com/v1/ipinfo?&apiKey=36971c0d3bed4e28815887539e8b3f88", requestOptions)
+  .then(response => response.json())
+  .then(result => {loc = result.location;
+    console.log(result);
+    position(loc)})
+  .catch(error => console.log('error', error));
+  
+  let reverb = new Tone.Reverb({
+    preDelay: .1,
+    decay: 10,
+    wet: 1
+  }).toDestination();
+
+  function play() {
+    if (document.getElementById("faPlay").classList.contains("fa-stop")) {
+      document.getElementById("faPlay").classList.add("fa-play");
+      document.getElementById("faPlay").classList.remove("fa-stop");
+      players.stopAll();
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+    } else {
+      document.getElementById("faPlay").classList.add("fa-stop");
+      document.getElementById("faPlay").classList.remove("fa-play");
+      for (let i = 0; i < 7; i++) { 
+        let thisPlayer = players.player(samples[i][0]);
+        let mLength = mOrbit / samples[i][2];
+        let mOffset = mLength - (((moonPos / mLength) % 1) * mLength);
+        thisPlayer.toDestination();
+        thisPlayer.volume.value = -9;
+        thisPlayer.connect(reverb);
+        Tone.Transport.scheduleRepeat(() => {
+          date = new Date();
+          if (Math.random() > (sunPos + 1) * .5) { 
+            getSunPos(samples[i][0], samples[i][1]);
+            moonCircles[i].classList.add("playing");
+            setTimeout(() => {
+              moonCircles[i].classList.remove("playing");
+            }, 3000)
+            thisPlayer.start();
+          };
+        }, mLength, mOffset); 
+      };
+      for (let i = 7; i < 14; i++) {
+        let thisPlayer = players.player(samples[i][0])
+        let sLength = sOrbit / samples[i][2];
+        let sOffset = sLength - (((earthPos / sLength) % 1) * sLength);
+        let env = new Tone.AmplitudeEnvelope({
+          attack: sLength * 0.5,
+          decay: sLength * 0.5,
+          decayCurve: "linear",
+          sustain: 0,
+        }).toDestination();
+        thisPlayer.volume.value = -9;
+        thisPlayer.connect(env)
+        Tone.Transport.scheduleRepeat(() => {
+          date = new Date();
+          getSunPos(samples[i][0], samples[i][1]);
+          let swellLevel = (sunPos * 0.5) + 0.5;
+          env.attack = (sLength * 0.5) * swellLevel;
+          env.decay = (sLength * 0.5) * swellLevel;
+          thisPlayer.start();
+          let swellOffset = "+"+((1 - swellLevel) * sLength) * 0.5
+          env.triggerAttack(swellOffset, swellLevel);
+          let sunPlaying = setInterval(() => {
+            d3.selectAll(".sunGroup" + (i - 7))
+            .style("opacity", env.value);
+            document.getElementsByClassName("sunCircle")[i - 7].style.opacity = env.value
+            if (document.getElementById("faPlay").classList.contains("fa-play")) {
+              clearInterval(sunPlaying)
+              env.cancel();
+              env.dispose();
+              d3.selectAll(".sunGroup" + (i - 7))
+              .style("opacity", 0);
+              document.getElementsByClassName("sunCircle")[i - 7].style.opacity = 0;
+            }
+          }, 50)
+        }, sLength, sOffset);
+      };
+      Tone.Transport.start();
+    }
+  };
+  
+  </script>
+</body>
+
+</html>
